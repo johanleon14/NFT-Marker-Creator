@@ -38,7 +38,7 @@ var imageData = {
     array: []
 }
 
-exports.createNFT = async function createNFT(imgBuffer, imgName, imgExt, finalOutputPath) {
+var createNFT = exports.createNFT = async function (imgBuffer, imgName, imgExt, finalOutputPath) {
 
     if(imgBuffer) {
         foundInputPath.i = imgBuffer
