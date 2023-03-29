@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import * as readlineSync from 'readline-sync';
+// import * as readlineSync from 'readline-sync';
 import * as inkjet from 'inkjet';
 import * as im from 'imagemagick';
 import * as PNGImport from 'pngjs';
@@ -107,15 +107,6 @@ export async function createNFT(imgBuffer, imgName, imgExt, finalOutputPath) {
     }
 
     console.log("\nConfidence level: [" + txt + "] %f/5 || Entropy: %f || Current max: 5.17 min: 4.6\n", confidence.l, confidence.e)
-    
-    if(noConf){
-        const answer = readlineSync.question(`\nDo you want to continue? (Y/N)\n`);
-
-        if( answer == "n"){
-            console.log("\nProcess finished by the user! \n");
-            process.exit(1);
-        }
-    }
     
     let paramStr = params.join(' ');
 
