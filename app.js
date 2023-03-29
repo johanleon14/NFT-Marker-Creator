@@ -13,9 +13,9 @@ var params = [
 
 var validImageExt = [".jpg",".jpeg",".png"];
 
-export var srcImage;
+var srcImage;
 
-export var outputPath = '/output/';
+var outputPath = exports.outputPath = '/output/';
 
 var buffer;
 
@@ -29,10 +29,7 @@ var foundOutputPath = {
     i: -1
 }
 
-var noConf = false;
-var withDemo = false;
 var onlyConfidence = false;
-var isZFT = false;
 
 var imageData = {
     sizeX: 400,
@@ -42,7 +39,7 @@ var imageData = {
     array: []
 }
 
-export async function createNFT(imgBuffer, imgName, imgExt, finalOutputPath) {
+exports.createNFT = async function createNFT(imgBuffer, imgName, imgExt, finalOutputPath) {
 
     if(imgBuffer) {
         foundInputPath.i = imgBuffer
