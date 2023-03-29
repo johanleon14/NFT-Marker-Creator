@@ -39,7 +39,7 @@ var imageData = {
     sizeX: 400,
     sizeY: 200,
     nc: 0,
-    dpi: 072,
+    dpi: 72,
     array: []
 }
 
