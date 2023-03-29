@@ -1,11 +1,10 @@
-import * as path from 'path';
-import * as fs from 'fs';
-// import * as readlineSync from 'readline-sync';
-import * as inkjet from 'inkjet';
-import * as im from 'imagemagick';
-import * as PNGImport from 'pngjs';
-import * as Module from './libs/NftMarkerCreator_wasm.js';
-const PNG = PNGImport.PNG
+const path = require("path");
+const fs = require('fs');
+const readlineSync = require('readline-sync');
+const inkjet = require('inkjet');
+const im = require('imagemagick');
+const PNG = require('pngjs').PNG;
+var Module = require('./libs/NftMarkerCreator_wasm.js');
 
 // GLOBAL VARs
 var params = [
