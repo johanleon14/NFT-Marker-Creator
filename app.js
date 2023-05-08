@@ -1,11 +1,9 @@
 const path = require("path");
 const fs = require('fs');
-const glob = require('glob');
 const readlineSync = require('readline-sync');
 const inkjet = require('inkjet');
 const im = require('imagemagick');
 const PNG = require('pngjs').PNG;
-var artoolkit_wasm_url = './libs/NftMarkerCreator_wasm.wasm';
 var Module = require('./libs/NftMarkerCreator_wasm.js');
 
 // GLOBAL VARs
@@ -16,7 +14,7 @@ var validImageExt = [".jpg",".jpeg",".png"];
 
 var srcImage;
 
-var outputPath = '/output/';
+var outputPath = exports.outputPath = '/output/';
 
 var buffer;
 
@@ -30,62 +28,36 @@ var foundOutputPath = {
     i: -1
 }
 
-var noConf = false;
-var withDemo = false;
 var onlyConfidence = false;
-var isZFT = false;
 
 var imageData = {
-    sizeX: 0,
-    sizeY: 0,
+    sizeX: 400,
+    sizeY: 200,
     nc: 0,
-    dpi: 0,
+    dpi: 72,
     array: []
 }
 
-Module.onRuntimeInitialized = async function(){
-    
-    for (let j = 2; j < process.argv.length; j++) {
-        if(process.argv[j].indexOf('-i') !== -1 || process.argv[j].indexOf('-I') !== -1){
-            foundInputPath.b = true;
-            foundInputPath.i = j+1;
-            j++;
-        }else if(process.argv[j] === "-NoConf"){
-            noConf = true;
-        }else if(process.argv[j] === "-Demo"){
-            withDemo = true;
-        }else if(process.argv[j] === "-zft"){
-            isZFT = true;
-        }else if(process.argv[j] === "-onlyConfidence"){
-            onlyConfidence = true;
-        }else if(process.argv[j].indexOf('-o') !== -1 || process.argv[j].indexOf('-O') !== -1){
-            foundOutputPath.b = true;
-            foundOutputPath.i = j+1;
-            j++;
-        }else {
-            params.push(process.argv[j]);
-        }
+var createNFT = exports.createNFT = async function (imgBuffer, imgName, imgExt, finalOutputPath) {
+
+    if(imgBuffer) {
+        foundInputPath.i = imgBuffer
+        srcImage = imgBuffer
+        buffer = imgBuffer
+    } else {
+        console.log("\nERROR: No image in INPUT\n");
     }
 
-    if(!foundInputPath.b){
-        console.log("\nERROR: No image in INPUT command!\n e.g:(-i /PATH/TO/IMAGE)\n");
-        process.exit(1);
-    }else{
-        srcImage = path.join(__dirname, process.argv[foundInputPath.i]);
-    }
-
-    if(foundOutputPath.b){
-        outputPath = process.argv[foundOutputPath.i];
-        if(!outputPath.startsWith('/'))
-            outputPath = '/'+outputPath;
-        if(!outputPath.endsWith('/'))
-            outputPath += '/';
+    if(outputPath) {
+        foundOutputPath.i = outputPath;
+        outputPath = finalOutputPath
+        if(!outputPath.startsWith('/')) outputPath = '/'+outputPath;
+        if(!outputPath.endsWith('/')) outputPath += '/';
         console.log('Set output path: ' + outputPath);
     }
 
-    let fileNameWithExt = path.basename(srcImage);
-    let fileName = path.parse(fileNameWithExt).name;
-    let extName = path.parse(fileNameWithExt).ext;
+    let fileName = imgName;
+    let extName = imgExt;
 
     let foundExt = false;
     for (let ext in validImageExt) {
@@ -98,13 +70,6 @@ Module.onRuntimeInitialized = async function(){
     if(!foundExt){
         console.log("\nERROR: Invalid image TYPE!\n Valid types:(jpg,JPG,jpeg,JPEG,png,PNG)\n");
         process.exit(1);
-    }
-
-    if(!fs.existsSync(srcImage)){
-        console.log("\nERROR: Not possible to read image, probably invalid image PATH!\n");
-        process.exit(1);
-    }else{
-        buffer = fs.readFileSync(srcImage);
     }
 
     console.log('Check output path: ' + path.join(__dirname, outputPath));
@@ -139,15 +104,6 @@ Module.onRuntimeInitialized = async function(){
 
     console.log("\nConfidence level: [" + txt + "] %f/5 || Entropy: %f || Current max: 5.17 min: 4.6\n", confidence.l, confidence.e)
     
-    if(noConf){
-        const answer = readlineSync.question(`\nDo you want to continue? (Y/N)\n`);
-
-        if( answer == "n"){
-            console.log("\nProcess finished by the user! \n");
-            process.exit(1);
-        }
-    }
-    
     let paramStr = params.join(' ');
 
     let StrBuffer = Module._malloc(paramStr.length + 1);
@@ -175,93 +131,11 @@ Module.onRuntimeInitialized = async function(){
     let contentFset = Module.FS.readFile(filenameFset);
     let contentFset3 = Module.FS.readFile(filenameFset3);
 
-    if(isZFT){
-        console.log("CREATING ZFT FILE");
-        let iset = Buffer.from(content.buffer);
-        let fset = Buffer.from(contentFset.buffer);
-        let fset3 = Buffer.from(contentFset3.buffer);
 
-        let obj = {
-            iset: iset.toString('hex'),
-            fset: fset.toString('hex'),
-            fset3: fset3.toString('hex')
-        }
-
-        let strObj = JSON.stringify(obj);
-
-        let StrBufferZip = Module._malloc(strObj.length + 1);
-        Module.writeStringToMemory(strObj, StrBufferZip);
-        
-        Module._compressZip(StrBufferZip, strObj.length);
-        
-        let contentBin = Module.FS.readFile("tempBinFile.bin");
-
-        fs.writeFileSync(path.join(__dirname, '/output/') + fileName + ".zft", contentBin);
-
-        Module._free(StrBufferZip);
-
-        if(withDemo){
-            console.log("\nFinished marker creation!\nNow configuring demo! \n")
-
-            const markerDir = path.join(__dirname, '/demo/public/marker/');
-
-            if(!fs.existsSync(markerDir)){
-                fs.mkdirSync(markerDir);
-            }
-
-            let demoHTML = fs.readFileSync("./demo/nft.html").toString('utf8').split("\n");
-            addNewMarker(demoHTML, fileName);
-            let newHTML = demoHTML.join('\n');
-        
-            fs.writeFileSync("./demo/nft.html",newHTML,{encoding:'utf8',flag:'w'});
-
-            const files = fs.readdirSync(markerDir);
-            for (const file of files) {
-                fs.unlink(path.join(markerDir, file), err => {
-                if (err) throw err;
-                });
-            }
-            
-            fs.writeFileSync(markerDir + fileName + ".zft", contentBin);
-        
-            console.log("Finished!\nTo run demo use: 'npm run demo'");
-        }
-
-    }else{
-        console.log("CREATING ISET, FSET AND FSET3 FILES");
-        fs.writeFileSync(path.join(__dirname, outputPath) + fileName + ext, content);
-        fs.writeFileSync(path.join(__dirname, outputPath) + fileName + ext2, contentFset);
-        fs.writeFileSync(path.join(__dirname, outputPath) + fileName + ext3, contentFset3);
-
-        if(withDemo){
-            console.log("\nFinished marker creation!\nNow configuring demo! \n")
-    
-            const markerDir = path.join(__dirname, '/demo/public/marker/');
-    
-            if(!fs.existsSync(markerDir)){
-                fs.mkdirSync(markerDir);
-            }
-    
-            let demoHTML = fs.readFileSync("./demo/nft.html").toString('utf8').split("\n");
-            addNewMarker(demoHTML, fileName);
-            let newHTML = demoHTML.join('\n');
-        
-            fs.writeFileSync("./demo/nft.html",newHTML,{encoding:'utf8',flag:'w'});
-    
-            const files = fs.readdirSync(markerDir);
-            for (const file of files) {
-                fs.unlink(path.join(markerDir, file), err => {
-                  if (err) throw err;
-                });
-            }
-        
-            fs.writeFileSync(markerDir + fileName + ext, content);
-            fs.writeFileSync(markerDir + fileName + ext2, contentFset);
-            fs.writeFileSync(markerDir + fileName + ext3, contentFset3);
-        
-            console.log("Finished!\nTo run demo use: 'npm run demo'");
-        }
-    }
+    console.log("CREATING ISET, FSET AND FSET3 FILES");
+    fs.writeFileSync(path.join(__dirname, outputPath) + fileName + ext, content);
+    fs.writeFileSync(path.join(__dirname, outputPath) + fileName + ext2, contentFset);
+    fs.writeFileSync(path.join(__dirname, outputPath) + fileName + ext3, contentFset3);
 
     process.exit(0);
 }
@@ -294,8 +168,8 @@ async function useJPG(buf) {
             imageData.array = uint;
         }
     });
-    
-    await extractExif(buf);
+
+    // await extractExif(buf);
 }
 
 function extractExif(buf) {
